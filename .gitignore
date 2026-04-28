@@ -1,0 +1,11 @@
+.env
+.venv/
+chroma_db/
+resume_texts.json
+job_texts.json
+linkedin-job-postings.zip
+__pycache__/
+*.pyc
+.DS_Store
+resume-dataset/
+linkedin-job-postings/
