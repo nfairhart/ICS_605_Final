@@ -9,3 +9,4 @@ __pycache__/
 .DS_Store
 resume-dataset/
 linkedin-job-postings/
+sample_matches.jsonl
