@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.python-version
+
+# Large data files — not needed at runtime (chroma_db/ IS included)
+resume_texts.json
+job_texts.json
+sample_matches.jsonl
+test_matches.jsonl
+matches.jsonl
+matching_progress.json
+resume-dataset/
+linkedin-job-postings/
+
+# Dev files
+.env
+*.ipynb
+explore_matches.py
+test_connections.py
+convert_pdfs.py
+convert_jobs.py
+embedding.py
+main.py
+
+# Git
+.git/
+.gitignore
+
+# Docs
+*.pdf
+README.md
+*.md

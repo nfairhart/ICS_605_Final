@@ -1,0 +1,128 @@
+"""
+model_client.py
+
+Thin abstraction over the scoring backend. Set GEMMA_BACKEND env var to choose:
+  lmstudio — fine-tuned Gemma loaded in LM Studio (default; OpenAI-compat endpoint)
+  ollama   — fine-tuned Gemma GGUF served by Ollama
+  openai   — gpt-4.1-nano via OpenAI API (cloud fallback)
+
+Additional env vars:
+  LM_STUDIO_HOST  — LM Studio base URL (default: http://localhost:1234)
+  LM_STUDIO_MODEL — model identifier as shown in LM Studio (default: auto-detect loaded model)
+  OLLAMA_HOST     — Ollama base URL (default: http://localhost:11434)
+  GEMMA_MODEL     — Ollama model name (default: gemma3:9b-instruct-q4_K_M)
+  OPENAI_API_KEY  — required for openai backend only
+"""
+
+import os
+import re
+import sys
+import types
+from pathlib import Path
+
+# Must stub onnxruntime before matching.py imports chromadb
+_onnx_stub = types.ModuleType("chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2")
+_onnx_stub.ONNXMiniLM_L6_V2 = type("ONNXMiniLM_L6_V2", (), {})
+sys.modules["chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2"] = _onnx_stub
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from matching import SYSTEM_PROMPT, USER_TEMPLATE, MatchScore, SCORE_CHARS
+from openai import OpenAI
+
+
+def _parse_match_score(raw: str) -> MatchScore:
+    """Parse MatchScore from model output, with JSON extraction fallback."""
+    try:
+        return MatchScore.model_validate_json(raw)
+    except Exception:
+        pass
+    m = re.search(r'\{.*\}', raw, re.DOTALL)
+    if m:
+        return MatchScore.model_validate_json(m.group())
+    raise ValueError(f"Could not parse MatchScore from model output:\n{raw[:500]}")
+
+
+def _openai_client() -> OpenAI:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise EnvironmentError("OPENAI_API_KEY not set")
+    return OpenAI(api_key=api_key)
+
+
+def _lmstudio_client() -> OpenAI:
+    host = os.getenv("LM_STUDIO_HOST", "http://localhost:1234")
+    return OpenAI(base_url=f"{host}/v1", api_key="lm-studio")
+
+
+def _lmstudio_model(client: OpenAI) -> str:
+    model = os.getenv("LM_STUDIO_MODEL", "")
+    if model:
+        return model
+    # Auto-detect the first loaded model from LM Studio's model list
+    try:
+        models = client.models.list()
+        loaded = [m.id for m in models.data]
+        if loaded:
+            return loaded[0]
+    except Exception:
+        pass
+    return "local-model"
+
+
+def _ollama_client() -> OpenAI:
+    host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    return OpenAI(base_url=f"{host}/v1", api_key="ollama")
+
+
+def _call_openai_compat(client: OpenAI, model: str, messages: list) -> MatchScore:
+    """Call any OpenAI-compatible endpoint with structured output, with text fallback."""
+    try:
+        resp = client.beta.chat.completions.parse(
+            model=model,
+            messages=messages,
+            response_format=MatchScore,
+        )
+        result = resp.choices[0].message.parsed
+        if result is not None:
+            return result
+        raw = resp.choices[0].message.content or ""
+    except Exception:
+        resp = client.chat.completions.create(model=model, messages=messages)
+        raw = resp.choices[0].message.content or ""
+    return _parse_match_score(raw)
+
+
+def score_resume_job(resume_text: str, job_text: str) -> MatchScore:
+    """Score a (resume, job) pair using the configured backend."""
+    backend = os.getenv("GEMMA_BACKEND", "lmstudio").lower()
+
+    resume_text = resume_text[:SCORE_CHARS]
+    job_text = job_text[:SCORE_CHARS]
+    user_content = USER_TEMPLATE.format(resume_text=resume_text, job_text=job_text)
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_content},
+    ]
+
+    if backend == "lmstudio":
+        client = _lmstudio_client()
+        model = _lmstudio_model(client)
+        return _call_openai_compat(client, model, messages)
+
+    elif backend == "ollama":
+        client = _ollama_client()
+        model = os.getenv("GEMMA_MODEL", "gemma3:9b-instruct-q4_K_M")
+        return _call_openai_compat(client, model, messages)
+
+    elif backend == "openai":
+        client = _openai_client()
+        resp = client.beta.chat.completions.parse(
+            model=os.getenv("OPENAI_SCORING_MODEL", "gpt-4.1-nano"),
+            messages=messages,
+            response_format=MatchScore,
+        )
+        return resp.choices[0].message.parsed
+
+    else:
+        raise ValueError(f"Unknown GEMMA_BACKEND: {backend!r}. Use 'lmstudio', 'ollama', or 'openai'.")

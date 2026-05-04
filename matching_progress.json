@@ -1,10 +1,10 @@
 {
-  "scored_this_run": 7079,
-  "errors": 8,
-  "total_in_file": 9992,
+  "scored_this_run": 8,
+  "errors": 0,
+  "total_in_file": 10000,
   "target": 10000,
-  "progress_pct": 99.9,
-  "pairs_per_min": 97.2,
+  "progress_pct": 100.0,
+  "pairs_per_min": 70.6,
   "eta_minutes": 0.0,
-  "updated_at": "2026-04-29T12:14:33.328382+00:00"
+  "updated_at": "2026-04-30T00:02:29.216734+00:00"
 }

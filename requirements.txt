@@ -1,0 +1,8 @@
+chromadb
+openai
+pydantic
+python-dotenv
+requests
+pandas
+pdfplumber
+pypdf

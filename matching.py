@@ -20,11 +20,24 @@ import argparse
 import json
 import os
 import random
+import sys
 import time
+import types
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
+
+# chromadb 1.5.x eagerly imports onnxruntime (its default ONNX embedding
+# function) at package init time.  On macOS/Apple Silicon this causes a 60-120s
+# hang while CoreML/MPS backends initialize — even though this script always
+# passes pre-computed OpenAI embeddings and never calls any chromadb EF.
+# Stubbing the module before the import skips onnxruntime entirely.
+_onnx_stub = types.ModuleType(
+    "chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2"
+)
+_onnx_stub.ONNXMiniLM_L6_V2 = type("ONNXMiniLM_L6_V2", (), {})
+sys.modules["chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2"] = _onnx_stub
 
 import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
