@@ -28,6 +28,28 @@ sys.modules["chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2"] = _onnx_stu
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from matching import SYSTEM_PROMPT, USER_TEMPLATE, MatchScore, SCORE_CHARS
+
+# Prompt format used during fine-tuning — must match prepare_finetune_data.py exactly.
+# The fine-tuned model was trained with NO system message; using a different format
+# causes it to ignore fine-tuning and fall back to base model behaviour.
+_FINETUNE_MAX_CHARS = 2500
+_FINETUNE_INSTRUCTION = """\
+Analyze the match between this resume and job posting.
+Return a JSON object with these exact fields:
+  rationale            (str, 2-3 sentence overall assessment)
+  matching_strengths   (list[str], 2-4 items)
+  skill_gaps           (list[str], 2-5 items)
+  ats_keywords_missing (list[str], 3-8 items)
+  resume_improvements  (list[str], 2-4 items)
+  recommended_activities (list[str] or null)
+  match_score          (int, 0-100)
+  experience_level_fit (str: "under-qualified" | "well-matched" | "over-qualified")
+
+RESUME:
+{resume}
+
+JOB POSTING:
+{job}"""
 from openai import OpenAI
 
 
@@ -108,7 +130,12 @@ def score_resume_job(resume_text: str, job_text: str) -> MatchScore:
     if backend == "lmstudio":
         client = _lmstudio_client()
         model = _lmstudio_model(client)
-        return _call_openai_compat(client, model, messages)
+        # Use training-format prompt — no system message, exact instruction template
+        finetune_messages = [{"role": "user", "content": _FINETUNE_INSTRUCTION.format(
+            resume=resume_text[:_FINETUNE_MAX_CHARS].strip(),
+            job=job_text[:_FINETUNE_MAX_CHARS].strip(),
+        )}]
+        return _call_openai_compat(client, model, finetune_messages)
 
     elif backend == "ollama":
         client = _ollama_client()

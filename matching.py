@@ -91,15 +91,11 @@ SYSTEM_PROMPT = """\
 You are an expert recruiter and career coach. Given a resume and a job posting,
 evaluate how well the candidate fits the role and provide actionable guidance.
 
-Score 0–100:
-  0–30  = poor fit   (missing key skills or wrong domain entirely)
-  31–60 = partial fit (some relevant skills, could be considered)
-  61–80 = good fit    (solid match, meets most requirements)
-  81–100 = excellent  (strong match, exceeds most requirements)
+Respond with a JSON object. Generate the fields in this order — assess context
+before assigning the final score and category:
 
-Be calibrated — use the full range. Most pairs should score 20–70.
-
-Guidelines for the other fields:
+- rationale: 2–3 sentences summarising the overall fit. Lead with the strongest
+  signal (domain match, seniority, a critical gap) before elaborating.
 - matching_strengths: 2–4 specific things the resume already demonstrates well
   for this role (skills, experience, credentials, soft skills).
 - skill_gaps: 2–5 concrete qualifications or skills the job requires that are
@@ -114,8 +110,16 @@ Guidelines for the other fields:
   this could be a side project, portfolio piece, open-source contribution,
   freelance work, internship, certification, workshop, volunteer role, community
   service, pro-bono work, professional association, competition, or any other
-  activity that builds relevant credentials. Leave null if the resume is already
-  well-rounded or the gaps are better addressed by resume framing alone."""
+  activity that builds relevant credentials. Null if the resume is already
+  well-rounded or the gaps are better addressed by resume framing alone.
+- match_score: Integer 0–100 based on your assessment above.
+    0–30  = poor fit   (missing key skills or wrong domain entirely)
+   31–60 = partial fit (some relevant skills, could be considered)
+   61–80 = good fit    (solid match, meets most requirements)
+   81–100 = excellent  (strong match, exceeds most requirements)
+  Be calibrated — use the full range. Most pairs should score 20–70.
+- experience_level_fit: One of "under-qualified", "well-matched", or
+  "over-qualified" based on seniority and scope relative to the role."""
 
 USER_TEMPLATE = """\
 ## Resume
@@ -128,10 +132,6 @@ Evaluate this candidate's fit and provide coaching guidance."""
 
 
 class MatchScore(BaseModel):
-    match_score: int = Field(..., ge=0, le=100)
-    experience_level_fit: str = Field(
-        ..., description="One of: under-qualified, well-matched, over-qualified"
-    )
     rationale: str = Field(..., description="2–3 sentence overall assessment")
     matching_strengths: list[str] = Field(
         ..., description="2–4 resume strengths relevant to this role"
@@ -151,6 +151,10 @@ class MatchScore(BaseModel):
             "1–3 activities to close experience gaps — projects, volunteer work, "
             "certifications, community service, competitions, etc. Null if not needed."
         ),
+    )
+    match_score: int = Field(..., ge=0, le=100)
+    experience_level_fit: str = Field(
+        ..., description="One of: under-qualified, well-matched, over-qualified"
     )
 
 
