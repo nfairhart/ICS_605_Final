@@ -6,13 +6,15 @@ import json
 import random
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 SEED = 42
 TRAIN_SIZE = 9_000
 MAX_RESUME = 2500
 MAX_JOB = 2500
 MAX_CHARS = 14_000  # ~4000 tokens at 3.5 chars/token; drops outliers that exceed 4096 budget
-SRC = Path("sample_matches.jsonl")
-OUT = Path("finetune_data")
+SRC = PROJECT_ROOT / "sample_matches.jsonl"
+OUT = PROJECT_ROOT / "finetune_data"
 
 INSTRUCTION = """\
 Analyze the match between this resume and job posting.

@@ -17,11 +17,15 @@ Optional flags:
 """
 import argparse
 import json
+import random
 import re
 from pathlib import Path
 
 import json as _json
 import urllib.request
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 
 class _LocalClient:
     """Minimal OpenAI-compatible client using only stdlib — no pip install needed."""
@@ -48,11 +52,13 @@ client = _LocalClient("http://localhost:1234/v1")
 # ── Parse args ────────────────────────────────────────────────────────────────
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--val",  default="finetune_data/val.jsonl")
+parser.add_argument("--val",  default=str(PROJECT_ROOT / "finetune_data/val.jsonl"))
 parser.add_argument("--n",    type=int, default=None)
+parser.add_argument("--seed", type=int, default=42,
+                    help="random seed for sampling (default: 42)")
 parser.add_argument("--tol",  type=int, default=10,
                     help="match_score ±tolerance for agreement (default 10)")
-parser.add_argument("--out",     default="eval_results.jsonl")
+parser.add_argument("--out",     default=str(PROJECT_ROOT / "training/eval_results.jsonl"))
 parser.add_argument("--workers", type=int, default=1)
 parser.add_argument("--peek",    type=int, default=0,
                     help="print this many raw model outputs for inspection (default: 0)")
@@ -79,7 +85,7 @@ def call_model(prompt: str) -> str:
     return client.complete(
         messages=[{"role": "user", "content": prompt}],
         temperature=0.0,  # greedy — deterministic and reproducible for eval
-        max_tokens=1024,  # p99 response is ~609 tokens; 1024 gives headroom without risking runaway generation
+        max_tokens=4096,  # base model uses reasoning tokens before final output; 4096 covers thinking + response
     )
 
 
@@ -103,7 +109,8 @@ def score_agreement(pred_score: int | float, gt_score: int | float, tol: int) ->
 val_path = Path(args.val)
 rows = [json.loads(l) for l in val_path.read_text().splitlines() if l.strip()]
 if args.n:
-    rows = rows[:args.n]
+    random.seed(args.seed)
+    rows = random.sample(rows, min(args.n, len(rows)))
 
 print(f"Evaluating {len(rows)} examples from {val_path}")
 print(f"Match-score agreement tolerance: ±{args.tol} points\n")

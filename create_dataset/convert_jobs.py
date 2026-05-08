@@ -16,8 +16,10 @@ import json
 import re
 from pathlib import Path
 
-CSV_PATH = Path("linkedin-job-postings/postings.csv")
-OUTPUT   = Path("job_texts.json")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+CSV_PATH = PROJECT_ROOT / "linkedin-job-postings/postings.csv"
+OUTPUT   = PROJECT_ROOT / "job_texts.json"
 
 
 def clean_text(text: str) -> str:

@@ -47,8 +47,9 @@ from pydantic import BaseModel, Field
 
 load_dotenv()
 
-CHROMA_DIR    = Path("chroma_db")
-OUTPUT_FILE   = Path("matches.jsonl")
+PROJECT_ROOT  = Path(__file__).resolve().parent.parent
+CHROMA_DIR    = PROJECT_ROOT / "chroma_db"
+OUTPUT_FILE   = PROJECT_ROOT / "matches.jsonl"
 SCORING_MODEL = "gpt-4.1-nano"
 EMBED_MODEL   = "text-embedding-3-small"
 
@@ -293,14 +294,14 @@ def main():
         help="Stop once the output file reaches N total pairs (existing + new).",
     )
     parser.add_argument(
-        "--progress-file", type=Path, default=Path("matching_progress.json"),
+        "--progress-file", type=Path, default=PROJECT_ROOT / "matching_progress.json",
         help="JSON file updated every 10 pairs with count/rate/ETA (default: matching_progress.json).",
     )
     args = parser.parse_args()
 
     # ── Load resumes ──────────────────────────────────────────────────────────
     print("Loading resumes ...")
-    resumes: list[dict] = json.loads(Path("resume_texts.json").read_text())
+    resumes: list[dict] = json.loads((PROJECT_ROOT / "resume_texts.json").read_text())
     if args.category:
         resumes = [
             r for r in resumes
@@ -316,7 +317,7 @@ def main():
 
     # ── Load job metadata for full-text lookup ────────────────────────────────
     print("Loading job metadata ...")
-    all_jobs: list[dict] = json.loads(Path("job_texts.json").read_text())
+    all_jobs: list[dict] = json.loads((PROJECT_ROOT / "job_texts.json").read_text())
     jobs_by_id: dict[str, dict] = {j["id"]: j for j in all_jobs}
 
     # ── ChromaDB ──────────────────────────────────────────────────────────────

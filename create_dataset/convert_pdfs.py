@@ -18,9 +18,11 @@ import json
 import re
 from pathlib import Path
 
-CSV_PATH = Path("resume-dataset/Resume/Resume.csv")
-PDF_DIR  = Path("resume-dataset/data/data")
-OUTPUT   = Path("resume_texts.json")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+CSV_PATH = PROJECT_ROOT / "resume-dataset/Resume/Resume.csv"
+PDF_DIR  = PROJECT_ROOT / "resume-dataset/data/data"
+OUTPUT   = PROJECT_ROOT / "resume_texts.json"
 
 
 def clean_text(text: str) -> str:

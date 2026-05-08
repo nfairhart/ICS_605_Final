@@ -16,10 +16,12 @@ import subprocess
 import shutil
 from pathlib import Path
 
-LORA_DIR   = "gemma4-e2b-resume-lora"   # unzipped LoRA adapter directory
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+LORA_DIR   = str(PROJECT_ROOT / "models/gemma4-e2b-resume-lora")
 BASE_MODEL = "google/gemma-4-e2b-it"
-MERGED_DIR = "gemma4-e2b-resume-merged"
-GGUF_DIR   = "gemma4-e2b-resume-gguf"
+MERGED_DIR = str(PROJECT_ROOT / "models/gemma4-e2b-resume-merged")
+GGUF_DIR   = str(PROJECT_ROOT / "models/gemma4-e2b-resume-gguf")
 QUANT      = "Q4_K_M"
 
 

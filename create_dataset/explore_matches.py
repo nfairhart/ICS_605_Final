@@ -12,6 +12,8 @@ import statistics
 from collections import Counter
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 
 def load(path: Path) -> list[dict]:
     records = []
@@ -43,7 +45,7 @@ def section(title: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--file", type=Path, default=Path("test_matches.jsonl"))
+    parser.add_argument("--file", type=Path, default=PROJECT_ROOT / "test_matches.jsonl")
     parser.add_argument("--sample", type=int, default=2,
                         help="Number of full records to print at the end (default 2).")
     args = parser.parse_args()

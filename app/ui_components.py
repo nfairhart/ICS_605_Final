@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import streamlit as st
-from matching import MatchScore
+from create_dataset.matching import MatchScore
 
 
 _FIT_COLOR = {

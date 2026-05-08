@@ -27,7 +27,7 @@ sys.modules["chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2"] = _onnx_stu
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from matching import SYSTEM_PROMPT, USER_TEMPLATE, MatchScore, SCORE_CHARS
+from create_dataset.matching import SYSTEM_PROMPT, USER_TEMPLATE, MatchScore, SCORE_CHARS
 
 # Prompt format used during fine-tuning — must match prepare_finetune_data.py exactly.
 # The fine-tuned model was trained with NO system message; using a different format

@@ -28,7 +28,9 @@ from openai import RateLimitError
 
 load_dotenv()
 
-CHROMA_DIR  = Path("chroma_db")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+CHROMA_DIR  = PROJECT_ROOT / "chroma_db"
 BATCH_SIZE  = 100
 MAX_CHARS   = 6000
 # ~95k tokens/batch at 1M TPM limit → 6s gap keeps us safely under
@@ -36,15 +38,15 @@ BATCH_SLEEP = 6
 
 DATASETS = {
     "resumes": {
-        "texts_path":      Path("resume_texts.json"),
+        "texts_path":      PROJECT_ROOT / "resume_texts.json",
         "collection_name": "resumes",
-        "convert_hint":    "convert_pdfs.py",
+        "convert_hint":    "create_dataset/convert_pdfs.py",
         "display_fields":  ["category"],
     },
     "jobs": {
-        "texts_path":      Path("job_texts.json"),
+        "texts_path":      PROJECT_ROOT / "job_texts.json",
         "collection_name": "job_postings",
-        "convert_hint":    "convert_jobs.py",
+        "convert_hint":    "create_dataset/convert_jobs.py",
         "display_fields":  ["title", "company", "location", "experience_level"],
     },
 }
