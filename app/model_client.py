@@ -3,14 +3,11 @@ model_client.py
 
 Thin abstraction over the scoring backend. Set GEMMA_BACKEND env var to choose:
   lmstudio — fine-tuned Gemma loaded in LM Studio (default; OpenAI-compat endpoint)
-  ollama   — fine-tuned Gemma GGUF served by Ollama
   openai   — gpt-4.1-nano via OpenAI API (cloud fallback)
 
 Additional env vars:
   LM_STUDIO_HOST  — LM Studio base URL (default: http://localhost:1234)
   LM_STUDIO_MODEL — model identifier as shown in LM Studio (default: auto-detect loaded model)
-  OLLAMA_HOST     — Ollama base URL (default: http://localhost:11434)
-  GEMMA_MODEL     — Ollama model name (default: gemma3:9b-instruct-q4_K_M)
   OPENAI_API_KEY  — required for openai backend only
 """
 
@@ -92,11 +89,6 @@ def _lmstudio_model(client: OpenAI) -> str:
     return "local-model"
 
 
-def _ollama_client() -> OpenAI:
-    host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-    return OpenAI(base_url=f"{host}/v1", api_key="ollama")
-
-
 def _call_openai_compat(client: OpenAI, model: str, messages: list) -> MatchScore:
     """Call any OpenAI-compatible endpoint with structured output, with text fallback."""
     try:
@@ -137,11 +129,6 @@ def score_resume_job(resume_text: str, job_text: str) -> MatchScore:
         )}]
         return _call_openai_compat(client, model, finetune_messages)
 
-    elif backend == "ollama":
-        client = _ollama_client()
-        model = os.getenv("GEMMA_MODEL", "gemma3:9b-instruct-q4_K_M")
-        return _call_openai_compat(client, model, messages)
-
     elif backend == "openai":
         client = _openai_client()
         resp = client.beta.chat.completions.parse(
@@ -152,4 +139,4 @@ def score_resume_job(resume_text: str, job_text: str) -> MatchScore:
         return resp.choices[0].message.parsed
 
     else:
-        raise ValueError(f"Unknown GEMMA_BACKEND: {backend!r}. Use 'lmstudio', 'ollama', or 'openai'.")
+        raise ValueError(f"Unknown GEMMA_BACKEND: {backend!r}. Use 'lmstudio' or 'openai'.")
