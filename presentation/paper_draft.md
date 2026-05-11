@@ -49,6 +49,9 @@ Training data was formatted using the Gemma 4 instruction template, with the res
 
 LoRA adapters were applied to three attention projection modules (q_proj, v_proj, o_proj) with rank r=8 and alpha=16, introducing 3,735,552 trainable parameters out of 5,126,913,568 total (0.07%). Early experiments used seven target modules and a higher learning rate, which caused rapid overfitting. Reducing the module count, setting the learning rate to 1e-5, adding dropout of 0.1, and applying weight decay of 0.05 stabilized training. A cosine learning rate schedule with 100 warmup steps was used across three epochs with an effective batch size of 32.
 
+![Training loss curve showing train and eval loss over 600 steps](../training/training_loss.png)
+*Figure 1. Training and validation loss over 600 steps. The best checkpoint (green dashed line) is restored automatically via early stopping at step 450.*
+
 Training ran on a Google Colab A100 (40GB) in BF16 precision using the Unsloth framework, which reduced memory overhead and accelerated throughput. The median tokenized sequence length was 1,468 tokens against a 3,072-token budget, with no examples exceeding the limit. Early stopping with patience of 3 evaluation intervals was used to restore the best checkpoint automatically.
 
 The trained LoRA adapter was merged with the base model weights and quantized to Q4_K_M GGUF format using llama.cpp, reducing the model from approximately 10GB in BF16 to roughly 3-4GB — within the memory budget of an Apple M1 with 8GB RAM. The quantized model is served locally via LM Studio, which exposes an OpenAI-compatible API endpoint that the Streamlit application calls directly.
@@ -59,7 +62,10 @@ The trained LoRA adapter was merged with the base model weights and quantized to
 
 Evaluation was conducted on 100 randomly sampled validation examples using a fixed random seed applied identically to both the fine-tuned model and the base Gemma 4 e2b model, ensuring direct comparability. Each resume-job pair was submitted to the model via LM Studio's local API endpoint using the same prompt template used during training. Predictions were parsed from the JSON response and compared against GPT-4-nano ground truth labels on two metrics: match score agreement within plus or minus 10 points, and experience level classification accuracy across three categories.
 
-Results are summarized in Table 1. Fine-tuning improved score agreement from 49% to 75% and classification accuracy from 64% to 87%, representing gains of 26 and 23 percentage points respectively. Mean absolute error on match score decreased from 13.49 to 9.11 points. Both models exhibited a slight positive scoring bias, with the fine-tuned model averaging 1.95 points above ground truth and the base model averaging 1.17 points above.
+Results are summarized in Table 1 and Figure 2. Fine-tuning improved score agreement from 49% to 75% and classification accuracy from 64% to 87%, representing gains of 26 and 23 percentage points respectively. Mean absolute error on match score decreased from 13.49 to 9.11 points. Both models exhibited a slight positive scoring bias, with the fine-tuned model averaging 1.95 points above ground truth and the base model averaging 1.17 points above.
+
+![Success criteria comparison — fine-tuned vs base Gemma 4 e2b](../training/success_criteria_comparison.png)
+*Figure 2. All four evaluation metrics compared across fine-tuned and base models.*
 
 **Table 1. Evaluation results on 100 held-out validation examples.**
 
@@ -80,7 +86,15 @@ Results are summarized in Table 1. Fine-tuning improved score agreement from 49%
 | 11–20 points | 36 | 22 |
 | 21+ points | 15 | 3 |
 
-The most striking qualitative finding involves experience level classification. The base model predicted "over-qualified" for 19 of 100 examples in a sample where the ground truth contained zero over-qualified cases, suggesting the base model applies this label without reliable signal. Fine-tuning reduced these false over-qualified predictions to 2.
+The most striking qualitative finding involves experience level classification. The base model predicted "over-qualified" for 19 of 100 examples in a sample where the ground truth contained zero over-qualified cases, suggesting the base model applies this label without reliable signal. Fine-tuning reduced these false over-qualified predictions to 2. The confusion matrices in Figure 3 illustrate this clearly.
+
+![Label confusion matrices for fine-tuned and base models](../training/label_confusion.png)
+*Figure 3. Experience level classification confusion matrices. The base model incorrectly predicts "over-qualified" 19 times; the fine-tuned model reduces this to 2.*
+
+Score error distributions are shown in Figure 4. The fine-tuned model concentrates errors near zero while the base model produces a wider, flatter distribution extending to 30 points.
+
+![Score error histograms](../training/score_error_histogram.png)
+*Figure 4. Distribution of signed score error (predicted minus ground truth) for both models. Fine-tuned errors are tightly clustered; base model errors are more dispersed.*
 
 A persistent gap between training and validation loss suggests the model did not fully generalize. Likely contributing factors include label noise from the teacher model, the relatively modest dataset size of 9,000 examples for a nuanced structured prediction task, and a distributional mismatch introduced by Q4_K_M quantization at inference time — the model was trained in BF16 but evaluated in 4-bit precision.
 
@@ -88,7 +102,13 @@ A persistent gap between training and validation loss suggests the model did not
 
 ## 6. Conclusion
 
-*[To be completed — cover: what was built, what was learned, honest limitations, directions for future work]*
+This project demonstrates that knowledge distillation through supervised fine-tuning can meaningfully transfer structured scoring behavior from a large API model to a small local one. Training Gemma 4 e2b to imitate GPT-4-nano's resume evaluation judgment required only 9,000 examples, roughly one hour of A100 compute, and under five dollars in API costs — yet produced a 26 percentage point improvement in score agreement and a 23 percentage point improvement in experience level classification over the base model.
+
+The primary limiting factor was dataset size and composition. Across the course, the importance of data quantity was consistently emphasized, and this project confirmed it directly: the gap between training and validation loss suggests the model learned the task but did not fully generalize, and more diverse, carefully constructed training pairs would likely close that gap. A promising direction would be to construct the dataset in reverse — starting from job descriptions and synthetically generating resumes at varying levels of fit — giving the model cleaner, more controlled signal to learn from.
+
+The system works and runs on consumer hardware, which was a genuine engineering goal. However, a user relying on this tool for real job applications should understand its limitations. The fine-tuned Gemma model performs adequately, but for production use the same structured prompt and output schema would benefit significantly from a stronger backend model such as GPT-4-nano or beyond. The application architecture was designed with this in mind: the backend is configurable, so upgrading the model requires no changes to the interface.
+
+Finally, this project provided hands-on experience with the full fine-tuning pipeline — from data generation through LoRA training, quantization, and local deployment — that is directly applicable to edge computing scenarios where model size and inference cost are hard constraints. That practical experience is perhaps the most transferable outcome.
 
 ---
 
