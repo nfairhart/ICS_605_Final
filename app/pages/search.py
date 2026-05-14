@@ -32,27 +32,31 @@ def show():
         with st.spinner("Searching..."):
             try:
                 jobs = search_jobs(query.strip(), n=n_results)
+                st.session_state["_search_results"] = jobs
             except Exception as e:
                 st.error(f"Search failed: {e}")
+                st.session_state.pop("_search_results", None)
                 return
 
         if not jobs:
             st.info("No results found. Try a different query.")
+            st.session_state.pop("_search_results", None)
             return
 
+    elif submitted:
+        st.warning("Please enter a search query.")
+
+    jobs = st.session_state.get("_search_results", [])
+    if jobs:
         st.success(f"Found {len(jobs)} matching jobs")
 
         def send_to_analyze(job: dict) -> None:
             st.session_state["prefill_job_text"] = job["text"]
             st.session_state["prefill_job_title"] = job.get("title", "")
-            st.session_state["navigate_to"] = "Analyze Resume"
             st.switch_page("pages/analyze.py")
 
         for job in jobs:
             render_job_card(job, on_analyze=send_to_analyze)
-
-    elif submitted:
-        st.warning("Please enter a search query.")
 
 
 show()
